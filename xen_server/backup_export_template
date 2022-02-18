@@ -1,0 +1,39 @@
+# BACKUP DE VMs NO XCP-NG VIA CLI
+#   WARN: a caso haja necessidade de restore do template, ele só irá funcionar se o disco da vm ainda existir no host.
+#   INFO: para fins de backup, opte por exportar vm, entretanto, só é possível com a máquina desligada.
+
+#   https://docs.citrix.com/en-us/citrix-hypervisor/dr/snapshots.html
+
+
+1. Listar vms:
+    xe vm-list
+
+
+2. Criar snapshot:
+    xe vm-snapshot vm=<nome_da_vm> uuid=<id_da_vm> new-name-label=<nome_do_template_a_ser_criado>
+
+
+3. verificar local do storage montado:
+    mount
+
+4. Exportar snapshot como template para storage vinculado.
+    OBS.: o local usado abaixo, em filename, foi conseguindo usando o comando mount.
+
+    xe snapshot-export-to-template snapshot-uuid=<id_gerado_no_item_2.> filename=/run/sr-mount/<local_storage-item_3>/<nome_do_arquivo_a_ser_gerado>.xva
+
+
+
+##-------------------
+Exportar vm:
+    desligando a vm. <opcional>:
+        xe vm-shutdown vm=Debian-cacti  <force=true>
+
+    ex:
+    xe vm-export vm=Debian uuid=000000f0-0000-4000-4000-400000000000 compress=true filename=/run/sr-mount/24f0cb6a-fa7c-384b-9718-212273051958/DBN01.xva        
+
+Restaurar vm:
+    xe vm-import filename=/run/sr-mount/24f0cb6a-fa7c-384b-9718-212273051958/DBN01.xva sr-uuid=<uuid_do_storage>
+
+Iniciando vm:
+    xe vm-list   # para ver nome da vm
+    xe vm-start vm=Debian01

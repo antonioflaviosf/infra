@@ -1,0 +1,64 @@
+####    ANALISE DE LOG A PROCURA DE POSSIVEIS ATAQUES
+# -----------------------------------------------------------
+# O documento em questão tem como intenção descrever alguns comandos para procurar ataques conhecido em arquivos de log.
+# como referencia, foi utilizado os comandos do script abaixo:
+#    ref.: https://github.com/al0ne/nginx_log_check/blob/master/nginx_check.sh
+#    
+#    OBS.: (IMPORTANTE) por questoes de segurança, o arquivo acima não foi executado, e sim retirado alguns parâmetros do mesmo como referência.
+# -----------------------------------------------------------
+####
+
+# REQUISITOS:
+    - zcat
+    - tar
+    - the_silver_searcher (CentOS), silversearcher-ag (Debian)
+
+
+# BLOQUEANDO IP SUSPEITO VIA FIREWALL-CMD:
+    - FIREWALL-CMD
+        # sudo firewall-cmd --permanent --add-rich-rule="rule family='ipv4' source address='xxx.xxx.xxx.xxx' reject"
+        # sudo firewall-cmd --reload
+
+    - IPTABLES
+        # sudo iptables -I INPUT -s xxx.xxx.xxx.xxx -j DROP
+
+# ESTRUTURA DOS COMANDOS ABAIXO:
+Basicamente todos os comandos citados seguem a mesma estrutura.
+    <command> <params> <arguments> <file/dir>
+
+
+1. ## FILTRAR POR QTD DE OCORRENCIA VIA IP: 
+    OBS.: verificar a coluna referente ao endereço ip no log 
+    O exemplo abaixo foi utilizado um arquivo compactado, para isso utiliza-se o comando <zcat> pra exibir o conteudo do mesmo, em caso que o arquivo nao esteja compactado pode utilizar o <cat> ou efetuar outras combinações com o <tail>.
+
+    # zcat  /var/log/nginx/access.log.gz | sort | awk '{print $1}' | uniq -c 
+
+    caso queira excluir as ocorrencia com algum ip Interno exemplo (192.0.0.0/16) pode incluir no final do commando:
+        | grep -v '192.0.' 
+        ou para mais de uma exceção
+        | grep -v -e '192.0.' -e '10.0.'
+
+        ex.:
+            # zcat  /var/log/nginx/access.log.gz | sort | awk '{print $1}' | uniq -c | grep -v -e '192.0.' -e '10.0.'
+
+
+
+2. ## SQLINJECTION
+Procurando por possíveis SQLINJECTION em todos os arquivos de log (nginx):
+
+# O uso 'egrep' é interessante pois ele destaca as saídas no terminal. Arquivo destino  /var/log/nginx/*
+
+    # egrep "%20xor|%20and|%20AND|%20or|%20OR|select%20|%20and%201=1|%20and%201=2|%20from|%27exec|information_schema.tables|load_file|benchmark|substring|table_name|table_schema|%20where%20|%20union%20|%20UNION%20|concat\(|concat_ws\(|%20group%20|0x5f|0x7e|0x7c|0x27|%20limit|\bcurrent_user\b|%20LIMIT|version%28|version\(|database%28|database\(|user%28|user\(|%20extractvalue|%updatexml|rand\(0\)\*2|%20group%20by%20x|%20NULL%2C|sqlmap" /var/log/nginx/*
+
+    2.1. outra opção porém usando o comando 'ag', para arquivos nao compacatdos, pesquisando em todos os arquivos de log de nginx:
+
+        # cat /var/log/nginx/*.log | ag -a "%20xor|%20and|%20AND|%20or|%20OR|select%20|%20and%201=1|%20and%201=2|%20from|%27exec|information_schema.tables|load_file|benchmark|substring|table_name|table_schema|%20where%20|%20union%20|%20UNION%20|concat\(|concat_ws\(|%20group%20|0x5f|0x7e|0x7c|0x27|%20limit|\bcurrent_user\b|%20LIMIT|version%28|version\(|database%28|database\(|user%28|user\(|%20extractvalue|%updatexml|rand\(0\)\*2|%20group%20by%20x|%20NULL%2C|sqlmap"
+    
+    2.2. para pesquisar em todos os arquivos compactados *.gz.
+
+        # zcat /var/log/nginx/*.gz | ag -a "%20xor|%20and|%20AND|%20or|%20OR|select%20|%20and%201=1|%20and%201=2|%20from|%27exec|information_schema.tables|load_file|benchmark|substring|table_name|table_schema|%20where%20|%20union%20|%20UNION%20|concat\(|concat_ws\(|%20group%20|0x5f|0x7e|0x7c|0x27|%20limit|\bcurrent_user\b|%20LIMIT|version%28|version\(|database%28|database\(|user%28|user\(|%20extractvalue|%updatexml|rand\(0\)\*2|%20group%20by%20x|%20NULL%2C|sqlmap"
+
+    2.3 visualizar em tempo real em todos os logs:
+        # tail -f  /var/log/nginx/*.log | ag -a "%20xor|%20and|%20AND|%20or|%20OR|select%20|%20and%201=1|%20and%201=2|%20from|%27exec|information_schema.tables|load_file|benchmark|substring|table_name|table_schema|%20where%20|%20union%20|%20UNION%20|concat\(|concat_ws\(|%20group%20|0x5f|0x7e|0x7c|0x27|%20limit|\bcurrent_user\b|%20LIMIT|version%28|version\(|database%28|database\(|user%28|user\(|%20extractvalue|%updatexml|rand\(0\)\*2|%20group%20by%20x|%20NULL%2C|sqlmap"
+
+
